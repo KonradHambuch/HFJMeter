@@ -1,0 +1,93 @@
+{
+    "name": "cbdc-tls-noca-network",
+    "version": "1.0.0",
+    "client": {
+        "organization": "FIOrg",
+        "connection": {
+            "timeout": {
+                "peer": {
+                    "endorser": "300"
+                },
+                "orderer": "300"
+            }
+        }
+    },
+    "channels": {
+        "epengo-channel": {
+            "orderers": [
+                "orderer0.example.com"
+            ],
+            "peers": {
+                "peer0.centralbank.example.com": {
+                    "endorsingPeer": true,
+                    "chaincodeQuery": true,
+                    "ledgerQuery": true,
+                    "eventSource": true
+                },
+                "peer0.fi.example.com": {
+                    "endorsingPeer": true,
+                    "chaincodeQuery": true,
+                    "ledgerQuery": true,
+                    "eventSource": true
+                }
+            }
+        }
+    },
+    "organizations": {
+        "CentralBankOrg": {
+            "mspid": "CentralBankOrgMSP",
+            "peers": [
+                "peer0.centralbank.example.com"
+            ],
+            "adminPrivateKey": {
+                "path": "crypto-config/peerOrganizations/centralbank.example.com/users/Admin@centralbank.example.com/msp/keystore/key.pem"
+            },
+            "signedCert": {
+                "path": "crypto-config/peerOrganizations/centralbank.example.com/users/Admin@centralbank.example.com/msp/signcerts/Admin@centralbank.example.com-cert.pem"
+            }
+        },
+        "FIOrg": {
+            "mspid": "FIOrgMSP",
+            "peers": [
+                "peer0.fi.example.com"
+            ],
+            "adminPrivateKey": {
+                "path": "crypto-config/peerOrganizations/fi.example.com/users/Admin@fi.example.com/msp/keystore/key.pem"
+            },
+            "signedCert": {
+                "path": "crypto-config/peerOrganizations/fi.example.com/users/Admin@fi.example.com/msp/signcerts/Admin@fi.example.com-cert.pem"
+            }
+        }
+    },
+    "orderers": {
+        "orderer0.example.com": {
+            "url": "grpcs://orderer0.example.com:7050",
+            "grpcOptions": {
+                "ssl-target-name-override": "orderer0.example.com"
+            },
+            "tlsCACerts": {
+                "path": "crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+            }
+        }
+    },
+    "peers": {
+        "peer0.centralbank.example.com": {
+            "url": "grpcs://peer0.centralbank.example.com:7051",
+            "grpcOptions": {
+                "ssl-target-name-override": "peer0.centralbank.example.com"
+            },
+            "tlsCACerts": {
+                "path": "crypto-config/peerOrganizations/centralbank.example.com/peers/peer0.centralbank.example.com/msp/tlscacerts/tlsca.centralbank.example.com-cert.pem"
+            }
+        },
+        "peer0.fi.example.com": {
+            "url": "grpcs://peer0.fi.example.com:7051",
+            "grpcOptions": {
+                "ssl-target-name-override": "peer0.fi.example.com"
+            },
+            "tlsCACerts": {
+                "path": "crypto-config/peerOrganizations/fi.example.com/peers/peer0.fi.example.com/msp/tlscacerts/tlsca.fi.example.com-cert.pem"
+            }
+        }
+    }
+}

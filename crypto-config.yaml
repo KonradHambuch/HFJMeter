@@ -1,0 +1,21 @@
+OrdererOrgs:
+- Name: Orderer
+  Domain: example.com
+
+  Template:
+      Count: 1
+
+PeerOrgs:
+- Name: CentralBankOrg
+  Domain: centralbank.example.com
+  Template:
+      Count: 1
+  Users:
+      Count: 1
+
+- Name: FIOrg
+  Domain: fi.example.com
+  Template:
+      Count: 1
+  Users:
+      Count: 1

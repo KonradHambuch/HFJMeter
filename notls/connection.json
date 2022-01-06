@@ -67,20 +67,20 @@
     },
     "orderers": {
         "orderer0.example.com": {
-            "url": "grpc://orderer0.example.com:7050"
+            "url": "grpc://localhost:7050"
         }
     },
     "peers": {
         "peer0.centralbank.example.com": {
-            "url": "grpc://peer0.centralbank.example.com:7051"
+            "url": "grpc://localhost:7051"
         },
         "peer0.fi.example.com": {
-            "url": "grpc://peer0.fi.example.com:7051"
+            "url": "grpc://localhost:7051"
         }
     },
     "certificateAuthorities": {
         "ca-centralbank": {
-          "url": "http://ca.centralbank.example.com:7054",
+          "url": "grpc://localhost:7054",
           "httpOptions": {
             "verify": false
           },
@@ -93,7 +93,7 @@
           "caName": "ca-centralbank"
         },
         "ca-fi": {
-          "url": "http://ca.fi.example.com:7054",
+          "url": "grpc://localhost:7054",
           "httpOptions": {
             "verify": false
           },

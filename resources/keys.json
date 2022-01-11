@@ -1,0 +1,22 @@
+{
+  "keypair": [
+    {
+      "id": "1",
+      "privateKeyString": "0xefc0a167d7589d9ec864b9166e88c8d3f13236e4e93ce787984f2aa0c166853b",
+      "publicKeyString": "0x2c6ab5d5b204aad3b3928322bdb7a1b9321057c1a7c9ac66c7e50a1938ef8e060d1b0b783b5d8ba789459c3a401b846fa4349d7f62045fd23b3bfa43a86c6a92",
+      "addressString": "0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b"
+    },
+    {
+      "id": "2",
+      "privateKeyString": "0x6d465f0825761464be425871d45fbc69b569618995c6e6eeb990756ba3c3c3f0",
+      "publicKeyString": "0x54a4c05d786b0ab0681f395e9fe59b84b1116aadb293121298cef8014c05246cad727283c52cc02596ab8c8e54bc0e9a715d3fe6a7a985b950d61faefc91a14e",
+      "addressString": "0xa48c6cc002b627954e1862620544e5613874676b"
+    },
+    {
+      "id": "3",
+      "privateKeyString": "0x49049974e5e77d359c11f38538352e0e735e46dba6b2a7c6c8ef77531faa6bc4",
+      "publicKeyString": "0x99b90e26a98f5aea0190f6f4b13992db8a7ab3944a4f640633947bf2b1be0612ec5aea9aa7e32fb0cc1b8ab6ddfb4ab391ff369e0b34aa7e3c4aae15d4cfc644",
+      "addressString": "0x844dc5d11dacf8f3e96101dc68fb03dccf68e243"
+    }
+  ]
+}

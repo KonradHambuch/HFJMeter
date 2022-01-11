@@ -38,8 +38,8 @@ public class App
                 Contract contract = network.getContract("cbdc");
 
                 // Submit transactions that store state to the ledger.
-                byte[] result = contract.createTransaction("getAllClients")
-                        .submit();
+                byte[] result = contract.createTransaction("createAddress")
+                        .submit("0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b", "0", "28", "VPh8t+yCJk/5KGlUeTeUMggeek1nJBvIICmqw1exmNM=", "aKO5ZgAcYv62GtsquwRHixs8ZYqAZ36LxXiT03RMg1w=");
                 System.out.println(new String(result, StandardCharsets.UTF_8));
             } catch (Exception e) {
                 e.printStackTrace();

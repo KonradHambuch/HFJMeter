@@ -15,9 +15,9 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) {
         String chaincode = "cbdc";
-        String method = "createAddress";
-        String args1 = "0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b 0";
-        String signIndex = "0";
+        String method = "addressExists";
+        String args1 = "0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b";
+        String signIndex = "-1";
         int index;
         Signature signature;
         //Validate and Parse JMeter Parameters
@@ -51,7 +51,7 @@ public class Main {
                 for(String a: Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class)){
                     System.out.println(a);
                 }
-                contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+                result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
                 if(result!=null) System.out.println(new String(result, StandardCharsets.UTF_8));
 
             } catch (Exception e) {

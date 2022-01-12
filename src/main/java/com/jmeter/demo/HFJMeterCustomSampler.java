@@ -25,17 +25,17 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
     public Arguments getDefaultParameters() {
         Arguments defaultParameters = new Arguments();
         defaultParameters.addArgument(CHAINCODE_TAG, "cbdc");
-        defaultParameters.addArgument(METHOD_TAG, "createAddress");
-        defaultParameters.addArgument(SIGN_INDEX, "0");
-        defaultParameters.addArgument(ARGS_TAG, "0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b 0");
+        defaultParameters.addArgument(METHOD_TAG, "addressExists");
+        defaultParameters.addArgument(SIGN_INDEX, "-1");
+        defaultParameters.addArgument(ARGS_TAG, "0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b");
         return defaultParameters;
     }
 
     public SampleResult runTest(JavaSamplerContext javaSamplerContext) {
-        String chaincode = "cbdc";
-        String method = "createAddress";
-        String args1 = "0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b 0";
-        String signIndex = "0";
+        String chaincode = javaSamplerContext.getParameter(CHAINCODE_TAG);
+        String method = javaSamplerContext.getParameter(METHOD_TAG);
+        String args1 = javaSamplerContext.getParameter(ARGS_TAG);
+        String signIndex = javaSamplerContext.getParameter(SIGN_INDEX);
         int index;
         Signature signature;
         //Validate and Parse JMeter Parameters
@@ -71,7 +71,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
                 for(String a: Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class)){
                     System.out.println(a);
                 }
-                contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+                result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
                 System.out.println(new String(result, StandardCharsets.UTF_8));
                 sampleResult.sampleEnd();
                 sampleResult.setSuccessful(Boolean.TRUE);

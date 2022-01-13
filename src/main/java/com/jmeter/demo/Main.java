@@ -31,7 +31,7 @@ public class Main {
             Path networkConfigFile = Paths.get(pathRoot + "notls/connection.json");
             Wallet wallet = Wallet.createFileSystemWallet(walletDirectory);
             Gateway.Builder builder = Gateway.createBuilder()
-                    .identity(wallet, "Admin@centralbank.example.com")
+                    .identity(wallet, "Admin@fi.example.com")
                     .networkConfig(networkConfigFile);
 
             // Create a gateway connection

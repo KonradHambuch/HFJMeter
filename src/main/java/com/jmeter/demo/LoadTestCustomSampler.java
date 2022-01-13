@@ -20,9 +20,15 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
 public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
+    private Network network = null;
     private static final String INDEX_TAG = "index";
     private static final String PHASE_TAG = "phase";
     private static final String N = "n";
+    public LoadTestCustomSampler(){
+        if(network == null) {
+            network = createConnection("Admin@fi.example.com");
+        }
+    }
     @Override
     public Arguments getDefaultParameters() {
         Arguments defaultParameters = new Arguments();
@@ -52,9 +58,9 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
                     break;
                 case 1:
                     keyPair = getXthKeyOfCSV(csvIndex);
-                    signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, keyPair.addressString, "100", "1");
+                    signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, keyPair.addressString, "1000", "1");
                     sampleResult.sampleStart();
-                    result = createTransaction("Admin@fi.example.com", signature, "cbdc", "mintUnits", keyPair.addressString, "100", "1");
+                    result = createTransaction("Admin@fi.example.com", signature, "cbdc", "mintUnits", keyPair.addressString, "1000", "1");
                     sampleResult.sampleEnd();
                     break;
                 case 2:
@@ -62,9 +68,9 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
                     KeyPair keyPair1 = getXthKeyOfCSV(indexes[0]);
                     KeyPair keyPair2 = getXthKeyOfCSV(indexes[1]);
                     int nonce = Integer.parseInt(createTransaction("Admin@fi.example.com", null, "cbdc", "getNonce", keyPair1.addressString));
-                    signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair1, keyPair1.addressString, keyPair2.addressString, "10", String.valueOf(nonce+1));
+                    signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair1, keyPair1.addressString, keyPair2.addressString, "1", String.valueOf(nonce+1));
                     sampleResult.sampleStart();
-                    result = createTransaction("Admin@fi.example.com", signature, "cbdc", "transfer", keyPair1.addressString, keyPair2.addressString, "10", "2");
+                    result = createTransaction("Admin@fi.example.com", signature, "cbdc", "transfer", keyPair1.addressString, keyPair2.addressString, "1", String.valueOf(nonce+1));
                     sampleResult.sampleEnd();
                     break;
                 default:
@@ -77,6 +83,7 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
             return sampleResult;
         }
         catch(Exception e){
+            e.printStackTrace();
             sampleResult.sampleEnd();
             sampleResult.setSuccessful(Boolean.FALSE);
             sampleResult.setResponseMessage(e.getMessage());
@@ -97,10 +104,7 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
             return null;
         }
     }
-    public String createTransaction(String identity, Signature signature, String chaincode, String method, String... args){
-        ArrayList<String> argParts = new ArrayList(Arrays.asList(args));
-        SampleResult sampleResult = new SampleResult();
-        sampleResult.sampleStart();
+    public Network createConnection(String identity){
         try {
             String pathRoot = "";
             String walletName = "wallet";
@@ -112,26 +116,25 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
                     .networkConfig(networkConfigFile);
 
             // Create a gateway connection
-            try (Gateway gateway = builder.connect()) {
-                // Obtain a smart contract deployed on the network.
-                Network network = gateway.getNetwork("epengo-channel");
-                Contract contract = network.getContract(chaincode);
-                byte[] result = null;
-                if(signature!=null){
-                    argParts.add(String.valueOf(signature.v));
-                    argParts.add(signature.r);
-                    argParts.add(signature.s);
-                }
-                System.out.println(method + " " + Arrays.toString(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class)));
-                result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
-                return new String(result, StandardCharsets.UTF_8);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        } catch (Exception e) {
+            return builder.connect().getNetwork("epengo-channel");
+        }
+        catch(Exception e){
             e.printStackTrace();
             return null;
         }
+    }
+    public String createTransaction(String identity, Signature signature, String chaincode, String method, String... args) throws Exception{
+        ArrayList<String> argParts = new ArrayList(Arrays.asList(args));
+        Contract contract = network.getContract(chaincode);
+        byte[] result = null;
+        if(signature!=null){
+            argParts.add(String.valueOf(signature.v));
+            argParts.add(signature.r);
+            argParts.add(signature.s);
+        }
+        //System.out.println("CALL: " + method + " " + Arrays.toString(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class)));
+        result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+        //System.out.println("RESULT: " + new String(result, StandardCharsets.UTF_8) + "\n");
+        return new String(result, StandardCharsets.UTF_8);
     }
 }

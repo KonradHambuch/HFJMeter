@@ -15,8 +15,8 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) {
         String chaincode = "cbdc";
-        String method = "addressExists";
-        String args1 = "0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b";
+        String method = "setMintingAllowance";
+        String args1 = "FIOrgMSP 1000000";
         String signIndex = "-1";
         int index;
         Signature signature;
@@ -31,7 +31,7 @@ public class Main {
             Path networkConfigFile = Paths.get(pathRoot + "notls/connection.json");
             Wallet wallet = Wallet.createFileSystemWallet(walletDirectory);
             Gateway.Builder builder = Gateway.createBuilder()
-                    .identity(wallet, "Admin@fi.example.com")
+                    .identity(wallet, "Admin@centralbank.example.com")
                     .networkConfig(networkConfigFile);
 
             // Create a gateway connection

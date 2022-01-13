@@ -37,4 +37,12 @@ public class SignHomeNativeMessage {
         }
         return null;
     }
+    public static Signature createSignatureFromKeyPair(KeyPair keyPair, String... messageParts){
+        byte[] message = String.join(" ", messageParts).getBytes();
+        //KeyPair
+        ECKeyPair ecKeyPair = new ECKeyPair(Numeric.toBigInt(keyPair.privateKeyString), Numeric.toBigInt(keyPair.publicKeyString));
+        //Signature
+        Sign.SignatureData signData = Sign.signPrefixedMessage(message, ecKeyPair);
+        return new Signature(signData);
+    }
 }

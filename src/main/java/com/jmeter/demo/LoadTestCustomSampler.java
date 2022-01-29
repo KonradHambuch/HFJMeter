@@ -20,6 +20,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
 public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
+    private int retried = 0;
     private Network network = null;
     private static final String INDEX_TAG = "index";
     private static final String PHASE_TAG = "phase";
@@ -52,6 +53,7 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
                 case 0:
                     keyPair = getXthKeyOfCSV(csvIndex);
                     signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, keyPair.addressString, "0");
+                    //System.out.println("CREATE_ADDRESS(" + keyPair.addressString + ", " + "0" + ")");
                     sampleResult.sampleStart();
                     result = createTransaction("Admin@fi.example.com", signature, "cbdc", "createAddress", keyPair.addressString, "0");
                     sampleResult.sampleEnd();
@@ -59,6 +61,7 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
                 case 1:
                     keyPair = getXthKeyOfCSV(csvIndex);
                     signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, keyPair.addressString, "1000", "1");
+                    //System.out.println("MINT(" + keyPair.addressString + ", " + "1000" + ", " + "1" + ")");
                     sampleResult.sampleStart();
                     result = createTransaction("Admin@fi.example.com", signature, "cbdc", "mintUnits", keyPair.addressString, "1000", "1");
                     sampleResult.sampleEnd();
@@ -69,40 +72,49 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
                     KeyPair keyPair2 = getXthKeyOfCSV(indexes[1]);
                     int nonce = Integer.parseInt(createTransaction("Admin@fi.example.com", null, "cbdc", "getNonce", keyPair1.addressString));
                     signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair1, keyPair1.addressString, keyPair2.addressString, "1", String.valueOf(nonce+1));
+                    //System.out.println("TRANSFER(" + keyPair1.addressString + ", " + keyPair2.addressString + ", " + "1" + ", " + String.valueOf(nonce+1) + ")");
                     sampleResult.sampleStart();
                     result = createTransaction("Admin@fi.example.com", signature, "cbdc", "transfer", keyPair1.addressString, keyPair2.addressString, "1", String.valueOf(nonce+1));
                     sampleResult.sampleEnd();
+                    //System.out.println("CALL: " + method + " " + Arrays.toString(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class)));
                     break;
                 default:
 
                     break;
             }
+            //if(result != null && result != "") System.out.println("RESULT: " + result);
             sampleResult.setSuccessful(Boolean.TRUE);
             sampleResult.setResponseCodeOK();
             sampleResult.setResponseMessage(result);
+            retried = 0;
             return sampleResult;
         }
         catch(Exception e){
-            e.printStackTrace();
-            sampleResult.sampleEnd();
+            //System.out.println(e.getMessage());
+            if(retried <= 3){
+                retried++;
+                //System.out.println("retrying...");
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+                return runTest(javaSamplerContext);
+            }
             sampleResult.setSuccessful(Boolean.FALSE);
             sampleResult.setResponseMessage(e.getMessage());
             return sampleResult;
         }
     }
-    public KeyPair getXthKeyOfCSV(int X){
-        try (Stream<String> lines = Files.lines(Paths.get("resources/keys.csv"))) {
-            String lineX = lines.skip(X).findFirst().get();
-            String[] parts = lineX.split(",");
-            String privateKey = parts[0];
-            String publicKey = parts[1];
-            String address = parts[2];
-            return new KeyPair(String.valueOf(X), privateKey, publicKey, address);
-        }
-        catch(IOException e){
-            e.printStackTrace();
-            return null;
-        }
+    public KeyPair getXthKeyOfCSV(int X) throws IOException{
+        Stream<String> lines = Files.lines(Paths.get("resources/keys.csv"));
+        String lineX = lines.skip(X).findFirst().get();
+        String[] parts = lineX.split(",");
+        String privateKey = parts[0];
+        String publicKey = parts[1];
+        String address = parts[2];
+        lines.close();
+        return new KeyPair(String.valueOf(X), privateKey, publicKey, address);
     }
     public Network createConnection(String identity){
         try {

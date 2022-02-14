@@ -25,33 +25,40 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
     private static final String INDEX_TAG = "index";
     private static final String PHASE_TAG = "phase";
     private static final String N = "n";
-    public LoadTestCustomSampler(){
-        if(network == null) {
-            network = createConnection("Admin@fi.example.com");
-        }
-    }
+    private static final String CONNECTION_PATH = "connection.json relative path";
+    private static final String WALLET_PATH = "wallet directory relative path";
+    private static final String KEYS_PATH = "keys.csv relative path";
     @Override
     public Arguments getDefaultParameters() {
         Arguments defaultParameters = new Arguments();
         defaultParameters.addArgument(INDEX_TAG, "${csv_index}");
         defaultParameters.addArgument(PHASE_TAG, "0");
         defaultParameters.addArgument(N, "${csv_index.max}");
+        defaultParameters.addArgument(CONNECTION_PATH, "resources/notls/connection.json");
+        defaultParameters.addArgument(WALLET_PATH, "resources/wallet");
+        defaultParameters.addArgument(KEYS_PATH, "resources/keys.csv");
         return defaultParameters;
     }
     @Override
     public SampleResult runTest(JavaSamplerContext javaSamplerContext) {
+        int csvIndex = Integer.parseInt(javaSamplerContext.getParameter(INDEX_TAG));
+        //STATUS: 0-creating addresses, 1-minting allowances, 2-transferring
+        int status = Integer.parseInt(javaSamplerContext.getParameter(PHASE_TAG));
+        int n = Integer.parseInt(javaSamplerContext.getParameter(N));
+        String connectionPath = javaSamplerContext.getParameter(CONNECTION_PATH);
+        String walletPath = javaSamplerContext.getParameter(WALLET_PATH);
+        String keysPath = javaSamplerContext.getParameter(KEYS_PATH);
+        if(network == null) {
+            network = createConnection("Admin@fi.example.com", walletPath, connectionPath);
+        }
         SampleResult sampleResult = new SampleResult();
         try {
-            int csvIndex = Integer.parseInt(javaSamplerContext.getParameter(INDEX_TAG));
-            //STATUS: 0-creating addresses, 1-minting allowances, 2-transferring
-            int status = Integer.parseInt(javaSamplerContext.getParameter(PHASE_TAG));
-            int n = Integer.parseInt(javaSamplerContext.getParameter(N));
             String result = null;
             KeyPair keyPair;
             Signature signature;
             switch (status) {
                 case 0:
-                    keyPair = getXthKeyOfCSV(csvIndex);
+                    keyPair = getXthKeyOfCSV(csvIndex, keysPath);
                     signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, keyPair.addressString, "0");
                     //System.out.println("CREATE_ADDRESS(" + keyPair.addressString + ", " + "0" + ")");
                     sampleResult.sampleStart();
@@ -59,7 +66,7 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
                     sampleResult.sampleEnd();
                     break;
                 case 1:
-                    keyPair = getXthKeyOfCSV(csvIndex);
+                    keyPair = getXthKeyOfCSV(csvIndex, keysPath);
                     signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, keyPair.addressString, "1000", "1");
                     //System.out.println("MINT(" + keyPair.addressString + ", " + "1000" + ", " + "1" + ")");
                     sampleResult.sampleStart();
@@ -68,8 +75,8 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
                     break;
                 case 2:
                     int[] indexes = ThreadLocalRandom.current().ints(0, n).distinct().limit(2).toArray();
-                    KeyPair keyPair1 = getXthKeyOfCSV(indexes[0]);
-                    KeyPair keyPair2 = getXthKeyOfCSV(indexes[1]);
+                    KeyPair keyPair1 = getXthKeyOfCSV(indexes[0], keysPath);
+                    KeyPair keyPair2 = getXthKeyOfCSV(indexes[1], keysPath);
                     int nonce = Integer.parseInt(createTransaction("Admin@fi.example.com", null, "cbdc", "getNonce", keyPair1.addressString));
                     signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair1, keyPair1.addressString, keyPair2.addressString, "1", String.valueOf(nonce+1));
                     //System.out.println("TRANSFER(" + keyPair1.addressString + ", " + keyPair2.addressString + ", " + "1" + ", " + String.valueOf(nonce+1) + ")");
@@ -106,8 +113,8 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
             return sampleResult;
         }
     }
-    public KeyPair getXthKeyOfCSV(int X) throws IOException{
-        Stream<String> lines = Files.lines(Paths.get("resources/keys.csv"));
+    public KeyPair getXthKeyOfCSV(int X, String keysPath) throws IOException{
+        Stream<String> lines = Files.lines(Paths.get(keysPath));
         String lineX = lines.skip(X).findFirst().get();
         String[] parts = lineX.split(",");
         String privateKey = parts[0];
@@ -116,12 +123,10 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
         lines.close();
         return new KeyPair(String.valueOf(X), privateKey, publicKey, address);
     }
-    public Network createConnection(String identity){
+    public Network createConnection(String identity, String walletPath, String connectionPath){
         try {
-            String pathRoot = "";
-            String walletName = "wallet";
-            Path walletDirectory = Paths.get(pathRoot + walletName);
-            Path networkConfigFile = Paths.get(pathRoot + "notls/connection.json");
+            Path walletDirectory = Paths.get( walletPath);
+            Path networkConfigFile = Paths.get(connectionPath);
             Wallet wallet = Wallet.createFileSystemWallet(walletDirectory);
             Gateway.Builder builder = Gateway.createBuilder()
                     .identity(wallet, identity)

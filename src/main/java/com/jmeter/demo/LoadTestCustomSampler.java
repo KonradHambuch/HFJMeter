@@ -27,6 +27,7 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
     private static final String N = "n";
     private static final String CONNECTION_PATH = "connection.json relative path";
     private static final String WALLET_PATH = "wallet directory relative path";
+    private static final String IDENTITY = "identity";
     private static final String KEYS_PATH = "keys.csv relative path";
     private String index;
     @Override
@@ -37,6 +38,7 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
         defaultParameters.addArgument(N, "${csv_index.max}");
         defaultParameters.addArgument(CONNECTION_PATH, "resources/notls/connection.json");
         defaultParameters.addArgument(WALLET_PATH, "resources/wallet");
+        defaultParameters.addArgument(IDENTITY, "Admin@fi.example.com");
         defaultParameters.addArgument(KEYS_PATH, "resources/keys.csv");
         return defaultParameters;
     }
@@ -49,8 +51,9 @@ public class LoadTestCustomSampler extends AbstractJavaSamplerClient {
         String connectionPath = javaSamplerContext.getParameter(CONNECTION_PATH);
         String walletPath = javaSamplerContext.getParameter(WALLET_PATH);
         String keysPath = javaSamplerContext.getParameter(KEYS_PATH);
+        String identity = javaSamplerContext.getParameter(IDENTITY);
         if (network == null) {
-            network = Utils.createConnection("Admin@fi.example.com", walletPath, connectionPath, "epengo-channel");
+            network = Utils.createConnection(identity, walletPath, connectionPath, "epengo-channel");
         }
         SampleResult sampleResult = new SampleResult();
         try {

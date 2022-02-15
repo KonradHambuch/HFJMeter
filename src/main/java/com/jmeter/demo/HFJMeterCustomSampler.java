@@ -4,93 +4,115 @@ import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
 import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;
 import org.apache.jmeter.samplers.SampleResult;
-import org.hyperledger.fabric.gateway.Contract;
-import org.hyperledger.fabric.gateway.Gateway;
 import org.hyperledger.fabric.gateway.Network;
-import org.hyperledger.fabric.gateway.Wallet;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
-    private static final String CHAINCODE_TAG = "chaincode";
-    private static final String METHOD_TAG = "method";
-    private static final String ARGS_TAG = "args (space between)";
-    private static final String SIGN_INDEX = "Index from keys.json (negative if no signature needed)";
+    private int retried = 0;
+    private Network network = null;
+    private static final String CONNECTION_PATH = "connection.json relative path";
+    private static final String WALLET_PATH = "wallet directory relative path";
+    private static final String IDENTITY = "identity";
+    private static final String KEYS_PATH = "keys.csv relative path";
+    private static final String CHAINCODE = "chaincode name";
+    private static final String METHOD = "method name";
+    private static final String CHANNEL = "channel name";
+    private static final String ARGS = "args (separated by spaces)";
+    private static final String PRIVATE_KEY_STRING = "signing address private key (null if sign not needed)";
+    private static final String PUBLIC_KEY_STRING = "signing address public key (null if sign not needed)";
+    private static final String ADDRESS_STRING = "signing address (null if sign not needed)";
+    private static final String NONCE_NEEDED = "0/1 whether nonce tx is needed before tx";
+
+    private String connectionPath;
+    private String walletPath;
+    private String keysPath;
+    private String identity;
+    private String chaincode;
+    private String method;
+    private String channel;
+    private ArrayList<String> arguments;
+    private String privateKeyString;
+    private String publicKeyString;
+    private String addressString;
+    private int nonceNeeded;
 
     @Override
     public Arguments getDefaultParameters() {
         Arguments defaultParameters = new Arguments();
-        defaultParameters.addArgument(CHAINCODE_TAG, "cbdc");
-        defaultParameters.addArgument(METHOD_TAG, "addressExists");
-        defaultParameters.addArgument(SIGN_INDEX, "-1");
-        defaultParameters.addArgument(ARGS_TAG, "0x1b18cf7b9bd974a9b2f2c4d5c0b1c2f69022dc2b");
+        defaultParameters.addArgument(CONNECTION_PATH, "resources/notls/connection.json");
+        defaultParameters.addArgument(WALLET_PATH, "resources/wallet");
+        defaultParameters.addArgument(KEYS_PATH, "resources/keys.csv");
+        defaultParameters.addArgument(IDENTITY, "Admin@fi.example.com");
+        defaultParameters.addArgument(CHAINCODE, "cbdc");
+        defaultParameters.addArgument(CHANNEL, "epengo-channel");
+        defaultParameters.addArgument(METHOD, "setMintingAllowance");
+        defaultParameters.addArgument(ARGS, "FIOrgMSP 50000000");
+        defaultParameters.addArgument(PRIVATE_KEY_STRING, "null");
+        defaultParameters.addArgument(PUBLIC_KEY_STRING, "null");
+        defaultParameters.addArgument(ADDRESS_STRING, "null");
+        defaultParameters.addArgument(NONCE_NEEDED, "0");
         return defaultParameters;
     }
+    public void initializeSampler(JavaSamplerContext javaSamplerContext){
+        connectionPath = javaSamplerContext.getParameter(CONNECTION_PATH);
+        walletPath = javaSamplerContext.getParameter(WALLET_PATH);
+        keysPath = javaSamplerContext.getParameter(KEYS_PATH);
+        identity = javaSamplerContext.getParameter(IDENTITY);
+        chaincode = javaSamplerContext.getParameter(CHAINCODE);
+        method = javaSamplerContext.getParameter(METHOD);
+        channel = javaSamplerContext.getParameter(CHANNEL);
+        privateKeyString = javaSamplerContext.getParameter(PRIVATE_KEY_STRING);
+        publicKeyString = javaSamplerContext.getParameter(PUBLIC_KEY_STRING);
+        addressString = javaSamplerContext.getParameter(ADDRESS_STRING);
+        nonceNeeded = javaSamplerContext.getIntParameter(NONCE_NEEDED);
+        arguments = new ArrayList(Arrays.asList(javaSamplerContext.getParameter(ARGS).split(" ")));
 
+        network = Utils.createConnection(identity, walletPath, connectionPath, channel);
+    }
+    @Override
     public SampleResult runTest(JavaSamplerContext javaSamplerContext) {
-        String chaincode = javaSamplerContext.getParameter(CHAINCODE_TAG);
-        String method = javaSamplerContext.getParameter(METHOD_TAG);
-        String args1 = javaSamplerContext.getParameter(ARGS_TAG);
-        String signIndex = javaSamplerContext.getParameter(SIGN_INDEX);
-        int index;
-        Signature signature;
-        //Validate and Parse JMeter Parameters
-        ArrayList<String> argParts = new ArrayList<String>(Arrays.asList(args1.split(" ")));
         SampleResult sampleResult = new SampleResult();
-        sampleResult.sampleStart();
+        Signature signature = null;
+        int nonce = 0;
         try {
-            System.out.println(System.getProperty("user.dir"));
-            String pathRoot = "";
-            String walletName = "wallet";
-            Path walletDirectory = Paths.get(pathRoot + walletName);
-            System.out.println(walletDirectory.toAbsolutePath().toString());
-            Path networkConfigFile = Paths.get(pathRoot + "notls/connection.json");
-            Wallet wallet = Wallet.createFileSystemWallet(walletDirectory);
-            Gateway.Builder builder = Gateway.createBuilder()
-                    .identity(wallet, "Admin@fi.example.com")
-                    .networkConfig(networkConfigFile);
-
-            // Create a gateway connection
-            try (Gateway gateway = builder.connect()) {
-                // Obtain a smart contract deployed on the network.
-                Network network = gateway.getNetwork("epengo-channel");
-                Contract contract = network.getContract(chaincode);
-                byte[] result = null;
-                if((index = Integer.parseInt(signIndex)) > -1){
-                    signature = SignHomeNativeMessage.createSignature(index, args1);
-                    argParts.add(String.valueOf(signature.v));
-                    argParts.add(signature.r);
-                    argParts.add(signature.s);
-                    System.out.println(signature.v + " " + signature.s + " " + signature.r);
-                }
-                System.out.println(method+ " " );
-                for(String a: Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class)){
-                    System.out.println(a);
-                }
-                result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
-                System.out.println(new String(result, StandardCharsets.UTF_8));
-                sampleResult.sampleEnd();
-                sampleResult.setSuccessful(Boolean.TRUE);
-                sampleResult.setResponseCodeOK();
-                sampleResult.setResponseMessage(new String(result, StandardCharsets.UTF_8));
-                return sampleResult;
-            } catch (Exception e) {
-                e.printStackTrace();
-                sampleResult.sampleEnd();
-                sampleResult.setSuccessful(Boolean.FALSE);
-                sampleResult.setResponseCodeOK();
-                sampleResult.setResponseMessage(e.getMessage());
-                return sampleResult;
+            //Get params at first call
+            if (network == null) {
+                initializeSampler(javaSamplerContext);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            //Signature
+            if(privateKeyString != "null"){
+                KeyPair keyPair = new KeyPair(privateKeyString, publicKeyString, addressString);
+                signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, (String[]) arguments.toArray());
+                if(nonceNeeded != 0){
+                    nonce = Integer.parseInt(Utils.createTransaction(network, null, chaincode, "getNonce", keyPair.addressString));
+                    arguments.add(String.valueOf(nonce));
+                }
+            }
+
+            //Get nonce
+            //Transaction
+            sampleResult.sampleStart();
+            String result = Utils.createTransaction(network, signature, chaincode, method, (String[]) arguments.toArray());
             sampleResult.sampleEnd();
-            sampleResult.setSuccessful(Boolean.FALSE);
+            sampleResult.setSuccessful(Boolean.TRUE);
             sampleResult.setResponseCodeOK();
+            sampleResult.setResponseMessage(result);
+            retried = 0;
+            return sampleResult;
+        }
+        catch (Exception e){
+            if (retried <= 3) {
+                retried++;
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+                return runTest(javaSamplerContext);
+            }
+            sampleResult.setSuccessful(Boolean.FALSE);
             sampleResult.setResponseMessage(e.getMessage());
             return sampleResult;
         }

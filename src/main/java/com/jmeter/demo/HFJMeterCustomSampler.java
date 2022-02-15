@@ -112,6 +112,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
                 }
                 return runTest(javaSamplerContext);
             }
+            e.printStackTrace();
             sampleResult.setSuccessful(Boolean.FALSE);
             sampleResult.setResponseMessage(e.getMessage());
             return sampleResult;

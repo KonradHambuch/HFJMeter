@@ -41,10 +41,9 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
     @Override
     public Arguments getDefaultParameters() {
         Arguments defaultParameters = new Arguments();
-        defaultParameters.addArgument(CONNECTION_PATH, "resources/notls/connection.json");
-        defaultParameters.addArgument(WALLET_PATH, "resources/wallet");
-        defaultParameters.addArgument(KEYS_PATH, "resources/keys.csv");
-        defaultParameters.addArgument(IDENTITY, "Admin@fi.example.com");
+        defaultParameters.addArgument(CONNECTION_PATH, "/resources/connection.json");
+        defaultParameters.addArgument(WALLET_PATH, "/resources/wallet");
+        defaultParameters.addArgument(IDENTITY, "Admin@cb");
         defaultParameters.addArgument(CHAINCODE, "cbdc");
         defaultParameters.addArgument(CHANNEL, "epengo-channel");
         defaultParameters.addArgument(METHOD, "setMintingAllowance");
@@ -58,7 +57,6 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
     public void initializeSampler(JavaSamplerContext javaSamplerContext){
         connectionPath = javaSamplerContext.getParameter(CONNECTION_PATH);
         walletPath = javaSamplerContext.getParameter(WALLET_PATH);
-        keysPath = javaSamplerContext.getParameter(KEYS_PATH);
         identity = javaSamplerContext.getParameter(IDENTITY);
         chaincode = javaSamplerContext.getParameter(CHAINCODE);
         method = javaSamplerContext.getParameter(METHOD);
@@ -68,7 +66,6 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
         addressString = javaSamplerContext.getParameter(ADDRESS_STRING);
         nonceNeeded = javaSamplerContext.getIntParameter(NONCE_NEEDED);
         arguments = new ArrayList(Arrays.asList(javaSamplerContext.getParameter(ARGS).split(" ")));
-
         network = Utils.createConnection(identity, walletPath, connectionPath, channel);
     }
     @Override
@@ -82,9 +79,9 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
                 initializeSampler(javaSamplerContext);
             }
             //Signature
-            if(privateKeyString != "null"){
+            if(!privateKeyString.equals("null")){
                 KeyPair keyPair = new KeyPair(privateKeyString, publicKeyString, addressString);
-                signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, (String[]) arguments.toArray());
+                signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, (String[]) arguments.toArray(new String[0]));
                 if(nonceNeeded != 0){
                     nonce = Integer.parseInt(Utils.createTransaction(network, null, chaincode, "getNonce", keyPair.addressString));
                     arguments.add(String.valueOf(nonce));
@@ -94,7 +91,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
             //Get nonce
             //Transaction
             sampleResult.sampleStart();
-            String result = Utils.createTransaction(network, signature, chaincode, method, (String[]) arguments.toArray());
+            String result = Utils.createTransaction(network, signature, chaincode, method, (String[]) arguments.toArray(new String[0]));
             sampleResult.sampleEnd();
             sampleResult.setSuccessful(Boolean.TRUE);
             sampleResult.setResponseCodeOK();
@@ -103,13 +100,10 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
             return sampleResult;
         }
         catch (Exception e){
-            if (retried <= 3) {
+            if (retried <= 1) {
                 retried++;
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
+                //Sleep
+                try {Thread.sleep(10);} catch (InterruptedException ex) {ex.printStackTrace();}
                 return runTest(javaSamplerContext);
             }
             e.printStackTrace();

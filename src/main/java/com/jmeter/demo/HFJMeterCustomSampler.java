@@ -61,11 +61,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
         chaincode = javaSamplerContext.getParameter(CHAINCODE);
         method = javaSamplerContext.getParameter(METHOD);
         channel = javaSamplerContext.getParameter(CHANNEL);
-        privateKeyString = javaSamplerContext.getParameter(PRIVATE_KEY_STRING);
-        publicKeyString = javaSamplerContext.getParameter(PUBLIC_KEY_STRING);
-        addressString = javaSamplerContext.getParameter(ADDRESS_STRING);
-        nonceNeeded = javaSamplerContext.getIntParameter(NONCE_NEEDED);
-        arguments = new ArrayList(Arrays.asList(javaSamplerContext.getParameter(ARGS).split(" ")));
+
         network = Utils.createConnection(identity, walletPath, connectionPath, channel);
     }
     @Override
@@ -73,25 +69,31 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
         SampleResult sampleResult = new SampleResult();
         Signature signature = null;
         int nonce = 0;
+
         try {
             //Get params at first call
             if (network == null) {
                 initializeSampler(javaSamplerContext);
             }
+            privateKeyString = javaSamplerContext.getParameter(PRIVATE_KEY_STRING);
+            publicKeyString = javaSamplerContext.getParameter(PUBLIC_KEY_STRING);
+            addressString = javaSamplerContext.getParameter(ADDRESS_STRING);
+            nonceNeeded = javaSamplerContext.getIntParameter(NONCE_NEEDED);
+            arguments = new ArrayList(Arrays.asList(javaSamplerContext.getParameter(ARGS).split(" ")));
             //Signature
             if(!privateKeyString.equals("null")){
                 KeyPair keyPair = new KeyPair(privateKeyString, publicKeyString, addressString);
-                signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, (String[]) arguments.toArray(new String[0]));
                 if(nonceNeeded != 0){
                     nonce = Integer.parseInt(Utils.createTransaction(network, null, chaincode, "getNonce", keyPair.addressString));
-                    arguments.add(String.valueOf(nonce));
+                    arguments.add(String.valueOf(nonce + 1));
                 }
+                signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, arguments.toArray(new String[arguments.size()]));
             }
 
             //Get nonce
             //Transaction
             sampleResult.sampleStart();
-            String result = Utils.createTransaction(network, signature, chaincode, method, (String[]) arguments.toArray(new String[0]));
+            String result = Utils.createTransaction(network, signature, chaincode, method, arguments.toArray(new String[arguments.size()]));
             sampleResult.sampleEnd();
             sampleResult.setSuccessful(Boolean.TRUE);
             sampleResult.setResponseCodeOK();

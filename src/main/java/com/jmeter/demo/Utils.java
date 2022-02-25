@@ -27,7 +27,7 @@ public class Utils {
     }
     public static Network createConnection(String identity, String walletPath, String connectionPath, String channel){
         try {
-            Path walletDirectory = Paths.get( walletPath);
+            Path walletDirectory = Paths.get(walletPath);
             Path networkConfigFile = Paths.get(connectionPath);
             Wallet wallet = Wallet.createFileSystemWallet(walletDirectory);
             Gateway.Builder builder = Gateway.createBuilder()

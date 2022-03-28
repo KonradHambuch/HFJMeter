@@ -4,8 +4,14 @@ import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
 import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;
 import org.apache.jmeter.samplers.SampleResult;
+import org.hyperledger.fabric.gateway.Contract;
+import org.hyperledger.fabric.gateway.Gateway;
 import org.hyperledger.fabric.gateway.Network;
+import org.hyperledger.fabric.gateway.Wallet;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -15,7 +21,6 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
     private static final String CONNECTION_PATH = "connection.json relative path";
     private static final String WALLET_PATH = "wallet directory relative path";
     private static final String IDENTITY = "identity";
-    private static final String KEYS_PATH = "keys.csv relative path";
     private static final String CHAINCODE = "chaincode name";
     private static final String METHOD = "method name";
     private static final String CHANNEL = "channel name";
@@ -23,11 +28,9 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
     private static final String PRIVATE_KEY_STRING = "signing address private key (null if sign not needed)";
     private static final String PUBLIC_KEY_STRING = "signing address public key (null if sign not needed)";
     private static final String ADDRESS_STRING = "signing address (null if sign not needed)";
-    private static final String NONCE_NEEDED = "0/1 whether nonce tx is needed before tx";
 
     private String connectionPath;
     private String walletPath;
-    private String keysPath;
     private String identity;
     private String chaincode;
     private String method;
@@ -36,7 +39,6 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
     private String privateKeyString;
     private String publicKeyString;
     private String addressString;
-    private int nonceNeeded;
 
     @Override
     public Arguments getDefaultParameters() {
@@ -51,7 +53,6 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
         defaultParameters.addArgument(PRIVATE_KEY_STRING, "null");
         defaultParameters.addArgument(PUBLIC_KEY_STRING, "null");
         defaultParameters.addArgument(ADDRESS_STRING, "null");
-        defaultParameters.addArgument(NONCE_NEEDED, "0");
         return defaultParameters;
     }
     public void initializeSampler(JavaSamplerContext javaSamplerContext){
@@ -61,39 +62,31 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
         chaincode = javaSamplerContext.getParameter(CHAINCODE);
         method = javaSamplerContext.getParameter(METHOD);
         channel = javaSamplerContext.getParameter(CHANNEL);
-
-        network = Utils.createConnection(identity, walletPath, connectionPath, channel);
+        network = createConnection(identity, walletPath, connectionPath, channel);
     }
     @Override
     public SampleResult runTest(JavaSamplerContext javaSamplerContext) {
         SampleResult sampleResult = new SampleResult();
         Signature signature = null;
-        int nonce = 0;
-
+        KeyPair keyPair = null;
         try {
-            //Get params at first call
+            //Create network at first call
             if (network == null) {
                 initializeSampler(javaSamplerContext);
             }
+            //Get varying params
             privateKeyString = javaSamplerContext.getParameter(PRIVATE_KEY_STRING);
             publicKeyString = javaSamplerContext.getParameter(PUBLIC_KEY_STRING);
             addressString = javaSamplerContext.getParameter(ADDRESS_STRING);
-            nonceNeeded = javaSamplerContext.getIntParameter(NONCE_NEEDED);
             arguments = new ArrayList(Arrays.asList(javaSamplerContext.getParameter(ARGS).split(" ")));
-            //Signature
+            //Create signature if needed
             if(!privateKeyString.equals("null")){
-                KeyPair keyPair = new KeyPair(privateKeyString, publicKeyString, addressString);
-                if(nonceNeeded != 0){
-                    nonce = Integer.parseInt(Utils.createTransaction(network, null, chaincode, "getNonce", keyPair.addressString));
-                    arguments.add(String.valueOf(nonce + 1));
-                }
+                keyPair = new KeyPair(privateKeyString, publicKeyString, addressString);
                 signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, arguments.toArray(new String[arguments.size()]));
             }
-
-            //Get nonce
             //Transaction
             sampleResult.sampleStart();
-            String result = Utils.createTransaction(network, signature, chaincode, method, arguments.toArray(new String[arguments.size()]));
+            String result = createTransaction(network, signature, chaincode, method, arguments.toArray(new String[arguments.size()]));
             sampleResult.sampleEnd();
             sampleResult.setSuccessful(Boolean.TRUE);
             sampleResult.setResponseCodeOK();
@@ -113,5 +106,32 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
             sampleResult.setResponseMessage(e.getMessage());
             return sampleResult;
         }
+    }
+    public Network createConnection(String identity, String walletPath, String connectionPath, String channel){
+        try {
+            Path walletDirectory = Paths.get(walletPath);
+            Path networkConfigFile = Paths.get(connectionPath);
+            Wallet wallet = Wallet.createFileSystemWallet(walletDirectory);
+            Gateway.Builder builder = Gateway.createBuilder()
+                    .identity(wallet, identity)
+                    .networkConfig(networkConfigFile);
+            return builder.connect().getNetwork(channel);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            return null;
+        }
+    }
+    public String createTransaction(Network network, Signature signature, String chaincode, String method, String... args) throws Exception{
+        ArrayList<String> argParts = new ArrayList(Arrays.asList(args));
+        Contract contract = network.getContract(chaincode);
+        byte[] result = null;
+        if(signature!=null){
+            argParts.add(String.valueOf(signature.v));
+            argParts.add(signature.r);
+            argParts.add(signature.s);
+        }
+        result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+        return new String(result, StandardCharsets.UTF_8);
     }
 }

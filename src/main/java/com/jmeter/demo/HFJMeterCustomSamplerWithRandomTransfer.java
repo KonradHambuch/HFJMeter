@@ -27,6 +27,7 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
     private static final String IDENTITY = "identity";
     private static final String CHAINCODE = "chaincode name";
     private static final String METHOD = "method name";
+    private static final String SUBMIT = "submit/evaluate (submitted txs are recorded on ledger)";
     private static final String CHANNEL = "channel name";
     private static final String NONCES_FILE = "nonces file path";
     private static final String ARGS = "args (separated by spaces)";
@@ -40,6 +41,7 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
     private String identity;
     private String chaincode;
     private String method;
+    private String submit;
     private String channel;
     private ArrayList<String> arguments = new ArrayList<>();
     private String noncesFile;
@@ -55,6 +57,7 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
         defaultParameters.addArgument(CHAINCODE, "cbdc");
         defaultParameters.addArgument(CHANNEL, "epengo-channel");
         defaultParameters.addArgument(METHOD, "transfer");
+        defaultParameters.addArgument(SUBMIT, "submit");
         defaultParameters.addArgument(ARGS, "");
         defaultParameters.addArgument(NONCES_FILE, "/resources/keys/nonces.txt");
         defaultParameters.addArgument(PRIVATE_KEY_STRING, "null");
@@ -75,6 +78,7 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
             identity = javaSamplerContext.getParameter(IDENTITY);
             chaincode = javaSamplerContext.getParameter(CHAINCODE);
             method = javaSamplerContext.getParameter(METHOD);
+            submit = javaSamplerContext.getParameter(SUBMIT);
             channel = javaSamplerContext.getParameter(CHANNEL);
             network = createConnection(identity, walletPath, connectionPath, channel);
 
@@ -107,7 +111,7 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
             signature = SignHomeNativeMessage.createSignatureFromKeyPair(keyPair, arguments.toArray(new String[arguments.size()]));
         }
         //Transaction
-        return createTransaction(network, signature, chaincode, method, keyPair, arguments.toArray(new String[arguments.size()]));
+        return createTransaction(network, signature, chaincode, method, submit, keyPair, arguments.toArray(new String[arguments.size()]));
 
     }
     public Network createConnection(String identity, String walletPath, String connectionPath, String channel){
@@ -125,7 +129,7 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
             return null;
         }
     }
-    public SampleResult createTransaction(Network network, Signature signature, String chaincode, String method, KeyPair signingKey, String... args) {
+    public SampleResult createTransaction(Network network, Signature signature, String chaincode, String method, String submit, KeyPair signingKey, String... args) {
         SampleResult sampleResult = new SampleResult();
         try {
             ArrayList<String> argParts = new ArrayList(Arrays.asList(args));
@@ -137,7 +141,11 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
                 argParts.add(signature.s);
             }
             sampleResult.sampleStart();
-            result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+            if (submit.equals("evaluate")){
+                result = contract.createTransaction(method).evaluate(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+            }else{
+                result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+            }
             //serializeObject(noncesFile, nonces);
             sampleResult.sampleEnd();
             sampleResult.setSuccessful(Boolean.TRUE);
@@ -156,13 +164,13 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
                 args[3] = String.valueOf(nonce);
                 //Sign tx
                 signature = SignHomeNativeMessage.createSignatureFromKeyPair(signingKey, args);
-                return createTransaction(network, signature, chaincode, method, signingKey, args);
+                return createTransaction(network, signature, chaincode, method, submit, signingKey, args);
             }
             if (retried <= 1) {
                 retried++;
                 //Sleep
                 try {Thread.sleep(10);} catch (InterruptedException ex) {ex.printStackTrace();}
-                return createTransaction(network, signature, chaincode, method, signingKey, args);
+                return createTransaction(network, signature, chaincode, method, submit, signingKey, args);
             }
             e.printStackTrace();
             sampleResult.setSuccessful(Boolean.FALSE);
@@ -172,7 +180,7 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
     }
     public int getNonceOnException(String address) {
         try{
-            return Integer.parseInt(createTransaction(network, null, chaincode, "getNonce", null, address).getResponseMessage());
+            return Integer.parseInt(createTransaction(network, null, chaincode, "getNonce","evaluate", null, address).getResponseMessage());
         }
         catch (Exception e){
             e.printStackTrace();

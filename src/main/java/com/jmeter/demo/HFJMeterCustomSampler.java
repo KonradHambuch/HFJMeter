@@ -23,6 +23,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
     private static final String IDENTITY = "identity";
     private static final String CHAINCODE = "chaincode name";
     private static final String METHOD = "method name";
+    private static final String SUBMIT = "submit/evaluate (submitted txs are recorded on ledger)";
     private static final String CHANNEL = "channel name";
     private static final String ARGS = "args (separated by spaces)";
     private static final String PRIVATE_KEY_STRING = "signing address private key (null if sign not needed)";
@@ -34,6 +35,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
     private String identity;
     private String chaincode;
     private String method;
+    private String submit;
     private String channel;
     private ArrayList<String> arguments;
     private String privateKeyString;
@@ -49,6 +51,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
         defaultParameters.addArgument(CHAINCODE, "cbdc");
         defaultParameters.addArgument(CHANNEL, "epengo-channel");
         defaultParameters.addArgument(METHOD, "setMintingAllowance");
+        defaultParameters.addArgument(SUBMIT, "submit");
         defaultParameters.addArgument(ARGS, "FIOrgMSP 50000000");
         defaultParameters.addArgument(PRIVATE_KEY_STRING, "null");
         defaultParameters.addArgument(PUBLIC_KEY_STRING, "null");
@@ -61,6 +64,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
         identity = javaSamplerContext.getParameter(IDENTITY);
         chaincode = javaSamplerContext.getParameter(CHAINCODE);
         method = javaSamplerContext.getParameter(METHOD);
+        submit = javaSamplerContext.getParameter(SUBMIT);
         channel = javaSamplerContext.getParameter(CHANNEL);
         network = createConnection(identity, walletPath, connectionPath, channel);
     }
@@ -86,7 +90,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
             }
             //Transaction
             sampleResult.sampleStart();
-            String result = createTransaction(network, signature, chaincode, method, arguments.toArray(new String[arguments.size()]));
+            String result = createTransaction(network, signature, chaincode, method, submit, arguments.toArray(new String[arguments.size()]));
             sampleResult.sampleEnd();
             sampleResult.setSuccessful(Boolean.TRUE);
             sampleResult.setResponseCodeOK();
@@ -122,7 +126,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
             return null;
         }
     }
-    public String createTransaction(Network network, Signature signature, String chaincode, String method, String... args) throws Exception{
+    public String createTransaction(Network network, Signature signature, String chaincode, String method, String submit, String... args) throws Exception{
         ArrayList<String> argParts = new ArrayList(Arrays.asList(args));
         Contract contract = network.getContract(chaincode);
         byte[] result = null;
@@ -131,7 +135,11 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
             argParts.add(signature.r);
             argParts.add(signature.s);
         }
-        result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+        if (submit.equals("evaluate")){
+            result = contract.createTransaction(method).evaluate(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+        }else{
+            result = contract.createTransaction(method).submit(Arrays.copyOf(argParts.toArray(), argParts.size(), String[].class));
+        }
         return new String(result, StandardCharsets.UTF_8);
     }
 }

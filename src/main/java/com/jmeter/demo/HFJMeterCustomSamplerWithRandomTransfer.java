@@ -4,19 +4,13 @@ import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
 import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;
 import org.apache.jmeter.samplers.SampleResult;
-import org.hyperledger.fabric.gateway.Contract;
-import org.hyperledger.fabric.gateway.Gateway;
-import org.hyperledger.fabric.gateway.Network;
-import org.hyperledger.fabric.gateway.Wallet;
+import org.hyperledger.fabric.gateway.*;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSamplerClient {
     private static volatile Map<String, Integer> nonces = new HashMap<String, Integer>();
@@ -118,7 +112,7 @@ public class HFJMeterCustomSamplerWithRandomTransfer extends AbstractJavaSampler
         try {
             Path walletDirectory = Paths.get(walletPath);
             Path networkConfigFile = Paths.get(connectionPath);
-            Wallet wallet = Wallet.createFileSystemWallet(walletDirectory);
+            Wallet wallet = Wallets.newFileSystemWallet(walletDirectory);
             Gateway.Builder builder = Gateway.createBuilder()
                     .identity(wallet, identity)
                     .networkConfig(networkConfigFile);

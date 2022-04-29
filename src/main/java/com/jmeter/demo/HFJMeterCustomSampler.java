@@ -4,10 +4,7 @@ import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
 import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;
 import org.apache.jmeter.samplers.SampleResult;
-import org.hyperledger.fabric.gateway.Contract;
-import org.hyperledger.fabric.gateway.Gateway;
-import org.hyperledger.fabric.gateway.Network;
-import org.hyperledger.fabric.gateway.Wallet;
+import org.hyperledger.fabric.gateway.*;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -115,7 +112,7 @@ public class HFJMeterCustomSampler extends AbstractJavaSamplerClient {
         try {
             Path walletDirectory = Paths.get(walletPath);
             Path networkConfigFile = Paths.get(connectionPath);
-            Wallet wallet = Wallet.createFileSystemWallet(walletDirectory);
+            Wallet wallet = Wallets.newFileSystemWallet(walletDirectory);
             Gateway.Builder builder = Gateway.createBuilder()
                     .identity(wallet, identity)
                     .networkConfig(networkConfigFile);
